@@ -7,11 +7,11 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import sys
-import yaml
 from pathlib import Path
 
 import rospy
 from franka_msgs.msg import FrankaState
+import numpy as np
 
 DEFAULT_TOPIC = "/franka_state_controller/franka_states"
 DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent / "config"
@@ -111,8 +111,23 @@ def _resolve_destination(args: argparse.Namespace) -> Path:
         raise FileExistsError(
             f"{destination} already exists. Use --force to overwrite or specify a different --save name."
         )
-    
+
     return destination
+
+def _franka_state_to_matrix(state: FrankaState) -> np.ndarray:
+    """Convert Franka's column-major O_T_EE array into the row-major format used by TP-GMR."""
+    raw = np.asarray(state.O_T_EE, dtype=float)
+    if raw.size != 16:
+        raise ValueError("O_T_EE must contain 16 elements.")
+    # Franka publishes column-major matrices; reshape with order='F' to recover the proper layout,
+    # resulting in translations on the last row and rotations in the upper 3x3 block.
+    matrix = raw.reshape(4, 4, order="F")
+    return matrix
+
+def _write_transform(destination: Path, matrix: np.ndarray) -> None:
+    values = matrix.reshape(-1).tolist()
+    serialized = ", ".join(f"{value:.16f}" for value in values)
+    destination.write_text(f"O_T_EE: [{serialized}]\n", encoding="utf-8")
 
 def main() -> int:
     args = parse_args()
@@ -132,30 +147,14 @@ def main() -> int:
         # Capture the Franka state
         state = capture_franka_state(args.topic, args.timeout)
         
-        # Extract O_T_EE (16 element array representing 4x4 transformation matrix)
-        o_t_ee_list = list(state.O_T_EE)
-        
-        # Create YAML structure with flow style (inline format)
-        data = {
-            'O_T_EE': o_t_ee_list
-        }
-        
-        # Write to YAML file with flow style for the list
-        with open(destination, 'w') as f:
-            # Use custom representer to force flow style for lists
-            yaml.dump(data, f, default_flow_style=None, width=float("inf"))
-        
-        # Alternative: Write manually in exact format
-        with open(destination, 'w') as f:
-            f.write(f"O_T_EE: {o_t_ee_list}\n")
+        matrix = _franka_state_to_matrix(state)
+        _write_transform(destination, matrix)
         
         print(f"Posa salvata in {destination}")
-        print(f"O_T_EE: {o_t_ee_list}")
+        print(f"O_T_EE: {matrix.reshape(-1).tolist()}")
         
         # Show position
-        import numpy as np
-        T = np.array(o_t_ee_list).reshape(4, 4)
-        position = T[:3, 3]
+        position = matrix[3, :3]
         print(f"Posizione end-effector [x, y, z]: {position}")
     
     except Exception as e:
