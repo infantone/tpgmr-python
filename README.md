@@ -148,11 +148,11 @@ If you get `cannot import name 'ImageTk' from 'PIL'` when using `--gui` with a v
 # 1. Activate your venv
 source venv/bin/activate
 
-# 2. Uninstall any existing Pillow in venv
-pip uninstall -y pillow
+# 2. Install Pillow in venv with --ignore-installed to override system package
+pip install --ignore-installed pillow
 
-# 3. Reinstall Pillow in venv (picks up system Tk libraries automatically)
-pip install pillow
+# 3. Verify it's using venv's Pillow (should show path in venv/lib/)
+python -c "import PIL; print(PIL.__file__)"
 
 # 4. Verify ImageTk is now available
 python -c "from PIL import ImageTk; print('ImageTk OK')"
