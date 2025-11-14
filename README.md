@@ -8,11 +8,27 @@ This library is based on the MATLAB implementation from [PbDlib](https://gitlab.
 
 ## Installation
 
-Clone the repository and install dependencies:
+Clone the repository:
 
 ```bash
 git clone https://github.com/infantone/tpgmr-python.git
 cd tpgmr-python
+```
+
+### Option 1: Using Virtual Environment (Recommended)
+
+Create and activate a virtual environment to avoid installing packages system-wide:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# venv\Scripts\activate  # On Windows
+pip install -r requirements.txt
+```
+
+### Option 2: Install System-wide
+
+```bash
 pip install -r requirements.txt
 ```
 
@@ -24,6 +40,11 @@ pip install numpy scipy matplotlib pyyaml pillow
 ## Usage
 
 All commands should be run from the repository root directory (`tpgmr-python/`).
+
+**Note:** If you used a virtual environment, make sure to activate it first:
+```bash
+source venv/bin/activate  # On Linux/Mac
+```
 
 ### Robot Trajectory Generalization
 
