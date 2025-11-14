@@ -54,6 +54,60 @@ To use the library with robot trajectories:
 python3 TPGMR/robot_trajectories/run_robot_generalization.py --gui
 ```
 
+### Capturing Poses with Real Franka Robot
+
+To capture target poses from a real Franka robot for trajectory generalization:
+
+**Prerequisites:**
+- Running ROS environment with Franka ROS stack
+- Network connection to the robot
+- Virtual environment activated (if used during installation)
+
+**Setup on Franka PC:**
+
+```bash
+# 1. Source ROS and catkin workspace
+source /opt/ros/<distro>/setup.bash
+source ~/catkin_ws/devel/setup.bash
+
+# 2. Activate virtual environment (if used)
+source venv/bin/activate
+
+# 3. Navigate to repository
+cd /path/to/tpgmr-python
+```
+
+**Capture a pose:**
+
+```bash
+python3 TPGMR/robot_trajectories/capture_franka_pose.py
+```
+
+This script will:
+1. Check if `/franka_state_controller/franka_states` is being published
+2. Launch the Franka controller if needed
+3. Execute `franka_sample.py` to record the current pose
+4. Extract the end-effector transformation (O_T_EE) from ROS
+5. Save the pose as a timestamped YAML file in `TPGMR/robot_trajectories/config/`
+
+**Common options:**
+
+```bash
+# Custom filename
+python3 TPGMR/robot_trajectories/capture_franka_pose.py --name final_pose_lab
+
+# Different output directory
+python3 TPGMR/robot_trajectories/capture_franka_pose.py --config-dir /tmp/config
+
+# Overwrite existing file
+python3 TPGMR/robot_trajectories/capture_franka_pose.py --name my_pose --force
+
+# Custom franka_sample.py command
+python3 TPGMR/robot_trajectories/capture_franka_pose.py --sample-command "python3 /path/to/franka_sample.py"
+```
+
+The captured pose files will be automatically detected by the GUI the next time you load demonstrations.
+
 ### Example Demo
 
 To run the 3D spiral demonstration:
