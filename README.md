@@ -40,7 +40,22 @@ python -c "from franka_msgs.msg import FrankaState; print('OK')"
 python3 TPGMR/robot_trajectories/franka_sample.py --save home_pose
 ```
 
-The script saves the end-effector pose (O_T_EE transformation matrix) as a YAML file in `TPGMR/robot_trajectories/config/`. These files are automatically detected by the GUI dropdowns.zed Gaussian Mixture Regression (TPGMR) for robot trajectory learning and generalization.
+The script saves the end-effector pose (O_T_EE transformation matrix) as a YAML file in `TPGMR/robot_trajectories/config/`. These files are automatically detected by the GUI dropdowns.
+
+### Trajectory Pose Exporter
+
+A GUI tool to export robot poses from recorded or generalized trajectories:
+
+```bash
+python3 TPGMR/tools/trajectory_pose_exporter.py
+```
+
+This tool allows you to:
+- Select a specific timestep from recorded demo or generalized trajectories
+- Extract the robot pose at that timestep
+- Export it as a YAML config file for use as start/goal poses in the GUI
+
+The exported poses are saved in `TPGMR/robot_trajectories/config/` and are automatically available in the trajectory generalization GUI dropdowns.
 
 ## About
 
