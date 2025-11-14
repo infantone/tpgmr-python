@@ -935,7 +935,7 @@ def _launch_gui(defaults: argparse.Namespace) -> None:  # pragma: no cover - GUI
 
             self.demo_paths: List[Path] = []
             self.config_frames = _list_config_frames(DEFAULT_CONFIG_DIR)
-            self.start_source_map: dict[str, tuple[str, str | None]] = {}
+            self.start_source_map: dict[str, tuple[str, object]] = {}
             self.goal_source_map: dict[str, tuple[str, object]] = {}
 
             self.demo_dir_var = tk.StringVar(value=str(defaults.demo_dir))
@@ -1138,6 +1138,10 @@ def _launch_gui(defaults: argparse.Namespace) -> None:  # pragma: no cover - GUI
                 label = f"{path.stem} (demo start)"
                 self.start_source_map[label] = ("demo", path.stem)
                 start_values.append(label)
+            for name, frame, cfg_path in self.config_frames:
+                label = f"{name} (config)"
+                self.start_source_map[label] = ("config", frame)
+                start_values.append(label)
             live_label = "Real-time robot (Franka O_T_EE)"
             self.start_source_map[live_label] = ("live", None)
             start_values.append(live_label)
@@ -1217,7 +1221,7 @@ def _launch_gui(defaults: argparse.Namespace) -> None:  # pragma: no cover - GUI
                 ("Diagonal regularization", "Stabilizes covariance estimation; mirrors --diag-reg."),
                 ("Time scaling", "Scales the time axis before learning for TP-GMR; mirrors --time-scaling."),
                 ("Random seed", "Seed fed to TP-GMR for reproducibility."),
-                ("Start frame", "Choose a demo start or pull the live robot pose from /franka_state_controller/franka_states."),
+                ("Start frame", "Choose a demo start, any config pose, or pull the live robot pose from /franka_state_controller/franka_states."),
                 ("Goal frame", "Pick a demo goal or any YAML pose found in robot_trajectories/config."),
                 ("Output directory", "Folder where the generated generalization (.npz) will be stored."),
                 ("Output filename", "Optional .npz name; leave empty to keep the timestamp-based default."),
@@ -1328,8 +1332,9 @@ def _launch_gui(defaults: argparse.Namespace) -> None:  # pragma: no cover - GUI
             selection = self.start_var.get()
             if selection not in self.start_source_map:
                 raise ValueError("Select a valid start frame option.")
-            source_type, name = self.start_source_map[selection]
+            source_type, payload = self.start_source_map[selection]
             if source_type == "demo":
+                name = payload
                 for demo in demos:
                     if demo.name == name:
                         return demo.frames[0]
@@ -1337,6 +1342,9 @@ def _launch_gui(defaults: argparse.Namespace) -> None:  # pragma: no cover - GUI
             if source_type == "live":
                 print("Fetching live robot pose for the start frame...")
                 return _fetch_realtime_robot_frame()
+            if source_type == "config":
+                frame: Frame = payload
+                return frame.copy()
             raise ValueError("Unsupported start frame selection.")
 
         def _resolve_goal_frame(self, demos: Sequence[RobotDemo]) -> Frame:
