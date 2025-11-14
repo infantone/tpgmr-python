@@ -133,3 +133,22 @@ python3 TPGMR/examples/run_spiral_3d_demo.py
 This implementation is based on PbDlib (MATLAB version) by Sylvain Calinon:
 - Copyright (c) 2015-2022 Idiap Research Institute, https://idiap.ch/
 - Original repository: https://gitlab.idiap.ch/rli/pbdlib-matlab
+
+## Troubleshooting
+
+### ImageTk Import Error
+
+If you get `cannot import name 'ImageTk' from 'PIL'` when using `--gui` with a venv created with `--system-site-packages`:
+
+```bash
+# Activate your venv first
+source venv/bin/activate
+
+# Force reinstall Pillow in the venv (overrides system package)
+pip install --upgrade --force-reinstall pillow
+
+# Verify ImageTk is now available
+python -c "from PIL import ImageTk; print('ImageTk OK')"
+```
+
+This ensures the venv uses its own Pillow version with ImageTk support, without modifying system packages.
