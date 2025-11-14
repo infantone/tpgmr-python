@@ -1,6 +1,46 @@
 # TPGMR Python Library
 
-A Python implementation of Task-Parameterized Gaussian Mixture Regression (TPGMR) for robot trajectory learning and generalization.
+A Python implementation of Task-### Franka pose sampling
+
+**Prerequisites:**
+1. Launch Franka control (adjust IP for your robot):
+   ```bash
+   roslaunch franka_control franka_control.launch robot_ip:=172.16.3.2
+   ```
+
+2. In a new terminal, set up the environment:
+   ```bash
+   # Navigate to repository
+   cd ~/GIUSEPPE/tpgmr-python
+   
+   # Source ROS workspace (where franka_msgs is compiled)
+   source ~/catkin_ws_SALADS/devel/setup.bash
+   
+   # Activate virtual environment
+   source venv/bin/activate
+   
+   # Verify franka_msgs is accessible
+   python -c "from franka_msgs.msg import FrankaState; print('franka_msgs OK')"
+   ```
+
+3. Capture a pose:
+   ```bash
+   # With timestamp
+   python3 TPGMR/robot_trajectories/franka_sample.py
+   
+   # With custom name
+   python3 TPGMR/robot_trajectories/franka_sample.py --save home_pose
+   ```
+
+**Quick setup (all in one):**
+```bash
+cd ~/GIUSEPPE/tpgmr-python
+source ~/catkin_ws_SALADS/devel/setup.bash && source venv/bin/activate
+python -c "from franka_msgs.msg import FrankaState; print('OK')"
+python3 TPGMR/robot_trajectories/franka_sample.py --save home_pose
+```
+
+The script saves the end-effector pose (O_T_EE transformation matrix) as a YAML file in `TPGMR/robot_trajectories/config/`. These files are automatically detected by the GUI dropdowns.zed Gaussian Mixture Regression (TPGMR) for robot trajectory learning and generalization.
 
 ## About
 
@@ -23,6 +63,13 @@ Create and activate a virtual environment to avoid installing packages system-wi
 python3 -m venv venv
 source venv/bin/activate  # On Linux/Mac
 # venv\Scripts\activate  # On Windows
+pip install -r requirements.txt
+```
+
+**Note for ROS users:** If you need to use ROS packages (e.g., `franka_msgs`), create the venv with system-site-packages:
+```bash
+python3 -m venv --system-site-packages venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 

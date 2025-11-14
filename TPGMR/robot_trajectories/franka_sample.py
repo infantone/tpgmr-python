@@ -1,34 +1,29 @@
 #!/usr/bin/env python3
+
 """Sample the current Franka pose and store it under robot_trajectories/config."""
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
-import signal
-import subprocess
 import sys
-import time
+import yaml
 from pathlib import Path
 
+import rospy
+from franka_msgs.msg import FrankaState
 
 DEFAULT_TOPIC = "/franka_state_controller/franka_states"
-DEFAULT_CONTROLLER_LAUNCH = (
-    "roslaunch",
-    "franka_example_controllers",
-    "select_controller.launch",
-    "controller:=cartesian_variable_impedance_controller_passive",
-)
 DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent / "config"
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Campiona la posa attuale del Franka leggendo %s e salva il blocco O_T_EE "
-            "(e le righe successive) in un file YAML, avviando il controllore se necessario." % DEFAULT_TOPIC
+            f"Campiona la posa attuale del Franka leggendo {DEFAULT_TOPIC} e salva O_T_EE "
+            "in un file YAML."
         )
     )
+    
     parser.add_argument(
         "--save",
         metavar="NOME",
@@ -37,37 +32,27 @@ def parse_args() -> argparse.Namespace:
             "un timestamp YYYYMMDD_HHMMSS. L'estensione .yaml viene aggiunta automaticamente."
         ),
     )
+    
     parser.add_argument(
         "--config-dir",
         type=Path,
         default=DEFAULT_CONFIG_DIR,
         help="Cartella di destinazione per i file di posa (default: %(default)s).",
     )
-    parser.add_argument(
-        "--lines-after",
-        type=int,
-        default=20,
-        help="Numero di righe da mantenere dopo O_T_EE nel blocco salvato (default: %(default)s).",
-    )
+    
     parser.add_argument(
         "--topic",
         default=DEFAULT_TOPIC,
         help="Topic da cui leggere lo stato del robot (default: %(default)s).",
     )
+    
     parser.add_argument(
-        "--controller-launch",
-        nargs="+",
-        default=list(DEFAULT_CONTROLLER_LAUNCH),
-        help=(
-            "Comando roslaunch per avviare il controllore se il topic non è attivo (default: %(default)s)."
-        ),
-    )
-    parser.add_argument(
-        "--wait-timeout",
+        "--timeout",
         type=float,
-        default=30.0,
-        help="Tempo massimo in secondi per attendere l'attivazione del topic (default: %(default)s).",
+        default=5.0,
+        help="Timeout in secondi per attendere il messaggio (default: %(default)s).",
     )
+    
     parser.add_argument(
         "--force",
         action="store_true",
@@ -75,93 +60,43 @@ def parse_args() -> argparse.Namespace:
         default=True,
         help="Sovrascrive il file di destinazione se esiste già (default: attivo).",
     )
+    
     parser.add_argument(
         "--no-force",
         action="store_false",
         dest="force",
         help="Non sovrascrive il file se esiste già.",
     )
+    
     return parser.parse_args()
 
-
-def topic_is_active(topic: str) -> bool:
-    """Return True when the ROS topic exists and has at least one publisher."""
-
+def capture_franka_state(topic: str, timeout: float) -> FrankaState:
+    """Wait for and return one FrankaState message from the specified topic."""
+    print(f"Attendo messaggio da {topic}...")
+    
     try:
-        info = subprocess.run(
-            ["rostopic", "info", topic],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:  # pragma: no cover - ROS tooling missing locally
-        raise RuntimeError("rostopic command is not available in PATH") from exc
-
-    if info.returncode != 0:
-        return False
-
-    return "Publishers: None" not in info.stdout
-
-
-def wait_for_topic(topic: str, timeout: float) -> None:
-    """Block until the requested topic becomes active or we time out."""
-
-    start = time.monotonic()
-    while True:
-        if topic_is_active(topic):
-            return
-        if time.monotonic() - start > timeout:
-            raise TimeoutError(
-                f"Timed out after {timeout:.1f}s waiting for topic '{topic}' to become active."
-            )
-        time.sleep(0.5)
-
-
-def capture_topic_block(topic: str, lines_after: int) -> str:
-    """Return the text block that starts at O_T_EE and includes the following lines."""
-
-    echo = subprocess.run(
-        ["rostopic", "echo", "-n", "1", topic],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    lines = echo.stdout.splitlines()
-    for idx, line in enumerate(lines):
-        if line.strip().startswith("O_T_EE:"):
-            end = min(len(lines), idx + lines_after + 1)
-            block = "\n".join(lines[idx:end]).strip()
-            if not block:
-                break
-            return f"{block}\n"
-
-    raise RuntimeError("Unable to find O_T_EE entry in the topic output.")
-
-
-def terminate_process(proc: subprocess.Popen[str]) -> None:
-    """Gracefully stop a roslaunch subprocess."""
-
-    if proc.poll() is not None:
-        return
-    proc.send_signal(signal.SIGINT)
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-
+        msg = rospy.wait_for_message(topic, FrankaState, timeout=timeout)
+        print("Messaggio ricevuto!")
+        return msg
+    except rospy.ROSException as e:
+        raise RuntimeError(
+            f"Timeout dopo {timeout}s in attesa del messaggio da {topic}. "
+            "Verifica che il controllore sia attivo e pubblichi sul topic."
+        ) from e
 
 def _resolve_destination(args: argparse.Namespace) -> Path:
     config_dir = args.config_dir.expanduser().resolve()
     config_dir.mkdir(parents=True, exist_ok=True)
-
+    
     if args.save:
         name = args.save.strip()
         if not name:
             raise RuntimeError("--save non può essere vuoto.")
+        
         candidate = Path(name)
         if candidate.suffix != ".yaml":
             candidate = candidate.with_suffix(".yaml")
+        
         if candidate.is_absolute():
             destination = candidate
         else:
@@ -169,45 +104,72 @@ def _resolve_destination(args: argparse.Namespace) -> Path:
     else:
         stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         destination = config_dir / f"{stamp}.yaml"
-
+    
     destination.parent.mkdir(parents=True, exist_ok=True)
+    
     if destination.exists() and not args.force:
         raise FileExistsError(
             f"{destination} already exists. Use --force to overwrite or specify a different --save name."
         )
+    
     return destination
-
 
 def main() -> int:
     args = parse_args()
-    destination = _resolve_destination(args)
-
-    controller_process: subprocess.Popen[str] | None = None
-    controller_already_running = topic_is_active(args.topic)
-
+    
+    # Initialize ROS node
     try:
-        if not controller_already_running:
-            print("Topic inattivo. Avvio il controllore...")
-            controller_process = subprocess.Popen(args.controller_launch)
-            wait_for_topic(args.topic, args.wait_timeout)
-            print("Controllore attivo e topic disponibile.")
-
-        block = capture_topic_block(args.topic, args.lines_after)
-        destination.write_text(block)
+        rospy.init_node('franka_pose_sampler', anonymous=True, disable_signals=True)
+    except rospy.exceptions.ROSException as e:
+        raise RuntimeError(
+            "Impossibile inizializzare il nodo ROS. "
+            "Verifica che roscore sia attivo e che tu abbia sourcato il workspace."
+        ) from e
+    
+    destination = _resolve_destination(args)
+    
+    try:
+        # Capture the Franka state
+        state = capture_franka_state(args.topic, args.timeout)
+        
+        # Extract O_T_EE (16 element array representing 4x4 transformation matrix)
+        o_t_ee_list = list(state.O_T_EE)
+        
+        # Create YAML structure with flow style (inline format)
+        data = {
+            'O_T_EE': o_t_ee_list
+        }
+        
+        # Write to YAML file with flow style for the list
+        with open(destination, 'w') as f:
+            # Use custom representer to force flow style for lists
+            yaml.dump(data, f, default_flow_style=None, width=float("inf"))
+        
+        # Alternative: Write manually in exact format
+        with open(destination, 'w') as f:
+            f.write(f"O_T_EE: {o_t_ee_list}\n")
+        
         print(f"Posa salvata in {destination}")
-
-    finally:
-        if controller_process is not None:
-            print("Arresto del controllore avviato dallo script...")
-            terminate_process(controller_process)
-            print("Controllore arrestato.")
-
+        print(f"O_T_EE: {o_t_ee_list}")
+        
+        # Show position
+        import numpy as np
+        T = np.array(o_t_ee_list).reshape(4, 4)
+        position = T[:3, 3]
+        print(f"Posizione end-effector [x, y, z]: {position}")
+    
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    
     return 0
 
-
-if __name__ == "__main__":  # pragma: no cover - CLI entry point
+if __name__ == "__main__":
     try:
-        raise SystemExit(main())
-    except Exception as exc:  # pylint: disable=broad-except
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print("\nInterrotto dall'utente.")
+        sys.exit(0)
+    except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
-        raise SystemExit(1)
+        sys.exit(1)
