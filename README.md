@@ -13,7 +13,12 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/infantone/tpgmr-python.git
 cd tpgmr-python
-pip install numpy scipy matplotlib pyyaml
+pip install -r requirements.txt
+```
+
+Or install manually:
+```bash
+pip install numpy scipy matplotlib pyyaml pillow
 ```
 
 ## Usage
