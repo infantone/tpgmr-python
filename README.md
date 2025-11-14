@@ -140,15 +140,27 @@ This implementation is based on PbDlib (MATLAB version) by Sylvain Calinon:
 
 If you get `cannot import name 'ImageTk' from 'PIL'` when using `--gui` with a venv created with `--system-site-packages`:
 
+**Root cause:** The system's PIL package lacks ImageTk support. The venv needs its own Pillow with Tk bindings.
+
+**Solution (no sudo required):**
+
 ```bash
-# Activate your venv first
+# 1. Activate your venv
 source venv/bin/activate
 
-# Install Pillow in the venv (overrides system package, without breaking dependencies)
-pip install --ignore-installed pillow
+# 2. Uninstall any existing Pillow in venv
+pip uninstall -y pillow
 
-# Verify ImageTk is now available
+# 3. Reinstall Pillow in venv (picks up system Tk libraries automatically)
+pip install pillow
+
+# 4. Verify ImageTk is now available
 python -c "from PIL import ImageTk; print('ImageTk OK')"
 ```
 
-This ensures the venv uses its own Pillow version with ImageTk support, without modifying system packages.
+**Note:** If you still get the error, the system might be missing `python3-tk`. Ask your admin to install it:
+```bash
+sudo apt-get install python3-tk  # Ubuntu/Debian
+```
+
+But the Pillow reinstall above should work on most systems without sudo.
