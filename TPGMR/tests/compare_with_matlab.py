@@ -16,11 +16,11 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.io import loadmat
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
-    sys.path.append(str(REPO_ROOT))
+    sys.path.insert(0, str(REPO_ROOT))
 
-from tpgmm_pylib.TPGMR import Frame, model_to_numpy_dict, run_tpgmr_demo
+from TPGMR import Frame, model_to_numpy_dict, run_tpgmr_demo
 
 FloatArray = NDArray[np.float64]
 COL_PEGS = np.array(

@@ -16,22 +16,22 @@ from typing import List, Sequence
 import numpy as np
 from scipy.interpolate import CubicSpline
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
-    sys.path.append(str(REPO_ROOT))
+    sys.path.insert(0, str(REPO_ROOT))
 
-from tpgmm_pylib.TPGMR import run_tpgmr_from_demos
-from tpgmm_pylib.TPGMR.model import Demonstration, Frame
-from tpgmm_pylib.TPGMR.learning import (
+from TPGMR import run_tpgmr_from_demos
+from TPGMR.model import Demonstration, Frame
+from TPGMR.learning import (
     build_observation_tensor,
     em_tensor_gmm,
     init_tensor_gmm_time_based,
 )
 
 
-DEFAULT_DEMO_DIR = Path("tpgmm_pylib/TPGMR/robot_trajectories/demo")
-DEFAULT_OUTPUT_DIR = Path("tpgmm_pylib/TPGMR/robot_trajectories/generalized")
-DEFAULT_CONFIG_DIR = Path("tpgmm_pylib/TPGMR/robot_trajectories/config")
+DEFAULT_DEMO_DIR = Path("TPGMR/robot_trajectories/demo")
+DEFAULT_OUTPUT_DIR = Path("TPGMR/robot_trajectories/generalized")
+DEFAULT_CONFIG_DIR = Path("TPGMR/robot_trajectories/config")
 
 _PYLAB = None
 _MATPLOTLIB = None

@@ -13,12 +13,12 @@ from matplotlib.lines import Line2D  # noqa: E402
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection  # noqa: E402
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
-    sys.path.append(str(REPO_ROOT))
+    sys.path.insert(0, str(REPO_ROOT))
 
-from tpgmm_pylib.TPGMR import Demonstration, Frame, demos_from_npz, run_tpgmr_from_demos
-from tpgmm_pylib.TPGMR.examples.generate_spiral_3d_demos import (
+from TPGMR import Demonstration, Frame, demos_from_npz, run_tpgmr_from_demos
+from TPGMR.examples.generate_spiral_3d_demos import (
     DEFAULT_OUTPUT,
     generate_spiral_dataset,
 )

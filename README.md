@@ -18,6 +18,8 @@ pip install numpy scipy matplotlib pyyaml
 
 ## Usage
 
+All commands should be run from the repository root directory (`tpgmr-python/`).
+
 ### Robot Trajectory Generalization
 
 To use the library with robot trajectories:
